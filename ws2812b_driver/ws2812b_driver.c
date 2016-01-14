@@ -7,6 +7,10 @@
  */
 
 #include "ws2812b_driver.h"
+#include "nrf_drv_spi.h"
+//#include "app_error.h"
+//#include "app_util_platform.h"
+//#include "bsp.h"
 
 void alloc_spi_buffer(spi_buffer_t * spi_buffer, uint16_t num_leds)
 {
@@ -71,3 +75,40 @@ void set_buff(rgb_led_t * rgb_led, spi_buffer_t spi_buffer)
 		p_led++;
 	}
 }
+
+//nrf_drv_spi_handler_t spi_master_x_event_handler(nrf_drv_spi_evt_t * event)
+//{
+//		m_transfer_completed = true;
+//}
+
+//void volatile spi_master_x_event_handler(nrf_drv_spi_evt_t const * event)
+//{
+//		m_transfer_completed = true;
+//}
+
+
+///**@brief Function for initializing a SPI master driver.
+// *
+// * @param[in] p_instance    Pointer to SPI master driver instance.
+// * @param[in] lsb           Bits order LSB if true, MSB if false.
+// */
+//void spi_master_init(nrf_drv_spi_t const * p_instance)
+//{
+//    uint32_t err_code = NRF_SUCCESS;
+
+//    nrf_drv_spi_config_t config =
+//    {
+//        .ss_pin       = NRF_DRV_SPI_PIN_NOT_USED,
+//        .irq_priority = APP_IRQ_PRIORITY_HIGH,
+//        .orc          = 0xff,
+//        .frequency    = NRF_DRV_SPI_FREQ_4M,
+//        .mode         = NRF_DRV_SPI_MODE_3,
+//        .bit_order    = NRF_DRV_SPI_BIT_ORDER_MSB_FIRST,
+//    };
+
+//    config.sck_pin  = SPIM0_SCK_PIN;
+//    config.mosi_pin = SPIM0_MOSI_PIN;
+//    config.miso_pin = NULL;
+//    nrf_drv_spi_init(p_instance, &config, spi_master_x_event_handler); 
+//}
+

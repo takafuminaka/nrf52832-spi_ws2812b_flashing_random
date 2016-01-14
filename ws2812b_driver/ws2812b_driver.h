@@ -11,6 +11,10 @@
 
 #include "nrf_drv_spi.h"
 #include "stdlib.h"
+#include "app_error.h"
+#include "app_util_platform.h"
+#include "bsp.h"
+
 
 #define PATTERN_0 (0x08)			// Bit pattern for data "0"
 #define PATTERN_1 (0x0e)      // Bit pattern for data "1"
@@ -42,6 +46,23 @@ void set_blank(spi_buffer_t spi_buffer);
 void set_buff(rgb_led_t* rgb_led, spi_buffer_t spi_buffer);
 
 void form_spi_sector(spi_buffer_t spi_buffer);
+
+void spi_master_init(nrf_drv_spi_t const * p_instance);
+
+//static volatile bool m_transfer_completed = true;
+
+//void volatile spi_master_x_event_handler(nrf_drv_spi_evt_t const * event);
+
+///**@brief Handler for SPI0 master events.
+// *
+// * @param[in] event SPI master event.
+// */
+//static nrf_drv_spi_handler_t spi_master_x_event_handler(nrf_drv_spi_evt_t * event)
+//{
+//		m_transfer_completed = true;
+//}
+
+
 
 #endif // WS2812B_DRIVER_H__
 

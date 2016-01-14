@@ -20,6 +20,7 @@
 #include "nrf_delay.h"
 #include "app_error.h"
 #include "app_util_platform.h"
+#include "nrf_drv_spi.h"
 #include "bsp.h"
 #include "app_timer.h"
 #include "nordic_common.h"
@@ -27,30 +28,24 @@
 
 #include "ws2812b_driver.h"
 
+
 const uint8_t leds_list[LEDS_NUMBER] = LEDS_LIST;
 
-//#define APP_TIMER_PRESCALER      0                      ///< Value of the RTC1 PRESCALER register.
-//#define APP_TIMER_MAX_TIMERS     BSP_APP_TIMERS_NUMBER  ///< Maximum number of simultaneously created timers.
-//#define APP_TIMER_OP_QUEUE_SIZE  2                      ///< Size of timer operation queues.
-
-#define DELAY_MS                 (1)                   ///< Timer Delay in milli-seconds.
+#define DELAY_MS                 	(0)                  ///< Timer Delay in milli-seconds.
 #define NUM_LEDS									(240)
 #define MAX_INTENSE								(16)
 #define MAX_INTENSE2							(255)
 #define MIN_INTENSE								(1)
-#define DECAY_STEP								(5)
-#define	PRAB_FLASH								(10000)
-#define STEP_SRIDE								(20)
-
-static volatile bool m_transfer_completed = true;
+#define DECAY_STEP								(30)
+#define	PRAB_FLASH								(20000)
+#define STEP_SRIDE1								(20)
+#define STEP_SRIDE2								(19)
 
 static const nrf_drv_spi_t m_spi_master_0 = NRF_DRV_SPI_INSTANCE(0);
 
-/**@brief Handler for SPI0 master events.
- *
- * @param[in] event SPI master event.
- */
-nrf_drv_spi_handler_t spi_master_0_event_handler(nrf_drv_spi_evt_t * event)
+static volatile bool m_transfer_completed = true;
+
+void volatile spi_master_x_event_handler(nrf_drv_spi_evt_t const * event)
 {
 		m_transfer_completed = true;
 }
@@ -61,7 +56,7 @@ nrf_drv_spi_handler_t spi_master_0_event_handler(nrf_drv_spi_evt_t * event)
  * @param[in] p_instance    Pointer to SPI master driver instance.
  * @param[in] lsb           Bits order LSB if true, MSB if false.
  */
-static void spi_master_init(nrf_drv_spi_t const * p_instance, bool lsb)
+static void spi_master_init(nrf_drv_spi_t const * p_instance)
 {
     uint32_t err_code = NRF_SUCCESS;
 
@@ -72,14 +67,13 @@ static void spi_master_init(nrf_drv_spi_t const * p_instance, bool lsb)
         .orc          = 0xff,
         .frequency    = NRF_DRV_SPI_FREQ_4M,
         .mode         = NRF_DRV_SPI_MODE_3,
-        .bit_order    = (lsb ?
-            NRF_DRV_SPI_BIT_ORDER_LSB_FIRST : NRF_DRV_SPI_BIT_ORDER_MSB_FIRST),
+        .bit_order    = NRF_DRV_SPI_BIT_ORDER_MSB_FIRST,
     };
 
     config.sck_pin  = SPIM0_SCK_PIN;
     config.mosi_pin = SPIM0_MOSI_PIN;
     config.miso_pin = NULL;
-    err_code = nrf_drv_spi_init(p_instance, &config, spi_master_0_event_handler);
+    nrf_drv_spi_init(p_instance, &config, spi_master_x_event_handler);
 
 }
 
@@ -90,75 +84,49 @@ static void spi_master_init(nrf_drv_spi_t const * p_instance, bool lsb)
  */
 int main(void)
 {
-
-		spi_buffer_t spi_buffer_blank;
 		spi_buffer_t spi_buffer_color;
-		rgb_led_t led_array[NUM_LEDS];
-		rgb_led_t led_array_flash[NUM_LEDS];
+	  nrf_drv_spi_xfer_desc_t xfer_desc0;
+		xfer_desc0.p_rx_buffer = NULL;
+		xfer_desc0.rx_length   = 0;
+	
+		rgb_led_t led_array[NUM_LEDS];				// array for base color
+		rgb_led_t led_array_flash1[NUM_LEDS]; // array for flash right-up to left-down
+		rgb_led_t led_array_flash2[NUM_LEDS]; // array for flash left-up to right-down
 		rgb_led_t led_array_work[NUM_LEDS];
+	
 		uint16_t rest;
 		int16_t nextc;
 		
-    // Configure LED-pins as outputs.
+    // Configure on-board LED-pins as outputs.
     LEDS_CONFIGURE(LEDS_MASK);
-
 
     nrf_drv_spi_t const * p_instance;
 
     p_instance = &m_spi_master_0;
-	
-		alloc_spi_buffer(&spi_buffer_blank, NUM_LEDS);
-		set_blank(spi_buffer_blank);
-		form_spi_sector(spi_buffer_blank);
-	
+
+		// initialize led_array (base color array)
 		for(uint16_t i=0;i<NUM_LEDS;i++) {
 			int c = (i % 7) + 1;
-			if ( c&4 )
-			{
-				led_array[i].green = 32;
-			}
-			else
-			{
-				led_array[i].green = 0;
-			}
-				
-			if ( c&2 )
-			{
-				led_array[i].red = 32;
-			}
-			else
-			{
-				led_array[i].red = 0;
-			}
-			if ( c&1 )
-			{
-				led_array[i].blue = 32;
-			}
-			else
-			{
-				led_array[i].blue = 0;
-			}
+				led_array[i].green = (MAX_INTENSE+MIN_INTENSE)/2 * ((c&4)>>2);
+				led_array[i].red   = (MAX_INTENSE+MIN_INTENSE)/2 * ((c&2)>>1);
+				led_array[i].blue  = (MAX_INTENSE+MIN_INTENSE)/2 * ((c&1)>>0);
 		}
 
+		// initialize led_array for flash 
 		for(uint16_t i=0;i<NUM_LEDS;i++) {
-				led_array_flash[i].green = 0;
-				led_array_flash[i].red   = 0;
-				led_array_flash[i].blue  = 0;
+				led_array_flash1[i].green = 0;
+				led_array_flash1[i].red   = 0;
+				led_array_flash1[i].blue  = 0;
+
+  			led_array_flash2[i].green = 0;
+				led_array_flash2[i].red   = 0;
+				led_array_flash2[i].blue  = 0;
 		}
+		
 		alloc_spi_buffer(&spi_buffer_color, NUM_LEDS);
- 		set_buff(led_array, spi_buffer_color);
-		form_spi_sector(spi_buffer_color);
 
+		spi_master_init(p_instance);
 	
-		spi_master_init(p_instance, false);
-		nrf_spim_shorts_enable(p_instance->p_registers,true);	
-	
-	  nrf_drv_spi_xfer_desc_t xfer_desc0;
-
-
-		xfer_desc0.p_rx_buffer = NULL;
-		xfer_desc0.rx_length   = 0;
-
 		for (;;)
 		{
 			LEDS_ON(1 << leds_list[0]);
@@ -206,46 +174,90 @@ int main(void)
 				led_array[i].blue = nextc;
 			}
 
-			for(uint16_t i=0;i<NUM_LEDS;i++) {
+			// Update led_array_flash1
+			for(uint16_t i=0;i<NUM_LEDS;i++)
+			{
 				if ( rand()%PRAB_FLASH == 0 )
 				{
-					led_array_flash[i].green = MAX_INTENSE2;
-					led_array_flash[i].red   = MAX_INTENSE2;
-					led_array_flash[i].blue  = MAX_INTENSE2;
+					led_array_flash1[i].green = MAX_INTENSE2;
+					led_array_flash1[i].red   = MAX_INTENSE2;
+					led_array_flash1[i].blue  = MAX_INTENSE2;
 				}
-				else if ( i + STEP_SRIDE >= NUM_LEDS ) 
+				else if ( i + STEP_SRIDE1 >= NUM_LEDS ) 
 				{
-					led_array_flash[i].green = 0;
-					led_array_flash[i].red   = 0;
-					led_array_flash[i].blue  = 0;
+					led_array_flash1[i].green = 0;
+					led_array_flash1[i].red   = 0;
+					led_array_flash1[i].blue  = 0;
 				}
 				else
 				{
-					nextc = led_array_flash[i+STEP_SRIDE].green - DECAY_STEP;
+					nextc = led_array_flash1[i+STEP_SRIDE1].green - DECAY_STEP;
 					if ( nextc < 0 )
 					{
 						nextc = 0;
 					}
-					led_array_flash[i].green = nextc;
+					led_array_flash1[i].green = nextc;
 				
-					nextc = led_array_flash[i+STEP_SRIDE].red - DECAY_STEP;
+					nextc = led_array_flash1[i+STEP_SRIDE1].red - DECAY_STEP;
 					if ( nextc < 0 )
 					{
 						nextc = 0;
 					}
-					led_array_flash[i].red = nextc;
+					led_array_flash1[i].red = nextc;
 				
-						nextc = led_array_flash[i+STEP_SRIDE].blue - DECAY_STEP;
+						nextc = led_array_flash1[i+STEP_SRIDE1].blue - DECAY_STEP;
 					if ( nextc < 0 )
 					{
 						nextc = 0;
 					}
-					led_array_flash[i].blue = nextc;
+					led_array_flash1[i].blue = nextc;
 				}
 			}
 			
-				for(uint16_t i=0;i<NUM_LEDS;i++) {
-				nextc = led_array[i].green + led_array_flash[i].green;
+			// Update led_array_flash2
+			for(uint16_t i=0;i<NUM_LEDS;i++)
+			{
+				if ( rand()%PRAB_FLASH == 0 )
+				{
+					led_array_flash2[i].green = MAX_INTENSE2;
+					led_array_flash2[i].red   = MAX_INTENSE2;
+					led_array_flash2[i].blue  = MAX_INTENSE2;
+				}
+				else if ( i + STEP_SRIDE2 >= NUM_LEDS ) 
+				{
+					led_array_flash2[i].green = 0;
+					led_array_flash2[i].red   = 0;
+					led_array_flash2[i].blue  = 0;
+				}
+				else
+				{
+					nextc = led_array_flash2[i+STEP_SRIDE2].green - DECAY_STEP;
+					if ( nextc < 0 )
+					{
+						nextc = 0;
+					}
+					led_array_flash2[i].green = nextc;
+				
+					nextc = led_array_flash2[i+STEP_SRIDE2].red - DECAY_STEP;
+					if ( nextc < 0 )
+					{
+						nextc = 0;
+					}
+					led_array_flash2[i].red = nextc;
+				
+						nextc = led_array_flash2[i+STEP_SRIDE2].blue - DECAY_STEP;
+					if ( nextc < 0 )
+					{
+						nextc = 0;
+					}
+					led_array_flash2[i].blue = nextc;
+				}
+			}
+
+			// Merge led arrays	
+			for(uint16_t i=0;i<NUM_LEDS;i++)
+			{
+				nextc = led_array[i].green + led_array_flash1[i].green + led_array_flash2[i].green;
 				if ( nextc < MIN_INTENSE )
 				{
 					nextc = MIN_INTENSE;
@@ -257,7 +269,7 @@ int main(void)
 				}
 				led_array_work[i].green = nextc;
 				
-				nextc = led_array[i].red + led_array_flash[i].red;
+				nextc = led_array[i].red + led_array_flash1[i].red + led_array_flash2[i].red;
 				if ( nextc < MIN_INTENSE )
 				{
 					nextc = MIN_INTENSE;
@@ -269,7 +281,7 @@ int main(void)
 				}
 				led_array_work[i].red = nextc;
 
-				nextc = led_array[i].blue + led_array_flash[i].blue;
+				nextc = led_array[i].blue + led_array_flash1[i].blue + led_array_flash2[i].blue;
 				if ( nextc < MIN_INTENSE )
 				{
 					nextc = MIN_INTENSE;
@@ -282,13 +294,15 @@ int main(void)
 				led_array_work[i].blue = nextc;
 			}
 
-			set_buff(led_array_work, spi_buffer_color);
-			form_spi_sector(spi_buffer_color);
+			// LED update
+			set_buff(led_array_work, spi_buffer_color);	// set up SPI buffer
+			form_spi_sector(spi_buffer_color);          // set up SPI buffer (EOS)
 				
 			xfer_desc0.p_tx_buffer = spi_buffer_color.buff;
 			xfer_desc0.tx_length    = spi_buffer_color.sector_size;
 			rest = spi_buffer_color.length;
 
+			// SPI transfer loop
 			while(rest > spi_buffer_color.sector_size)
 			{
 				m_transfer_completed = false;
@@ -298,15 +312,19 @@ int main(void)
 				xfer_desc0.p_tx_buffer += spi_buffer_color.sector_size;
 				rest -= spi_buffer_color.sector_size;
 			}
+			// final buffer
 			xfer_desc0.tx_length    = rest;
 			m_transfer_completed = false;
-  		nrf_drv_spi_xfer(p_instance, &xfer_desc0, 0);
- 		  while (! m_transfer_completed) {}
+			nrf_drv_spi_xfer(p_instance, &xfer_desc0, 0);
+			while (! m_transfer_completed) {}
 			
-			
-      nrf_delay_ms(DELAY_MS);
-			LEDS_INVERT(1 << leds_list[0]);
-    }
+			// LED update transfer finished
+				
+			// delay (LED will be updated this period)
+			// nrf_delay_ms(DELAY_MS);
+				
+			LEDS_INVERT(1 << leds_list[0]); // toggle on-board LED
+		}
 }
 
 /** @} */
