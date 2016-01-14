@@ -18,6 +18,7 @@
 */
 
 #include "nrf_delay.h"
+#include "nrf_drv_spi.h"
 #include "app_error.h"
 #include "app_util_platform.h"
 #include "nrf_drv_spi.h"
@@ -31,60 +32,43 @@
 
 const uint8_t leds_list[LEDS_NUMBER] = LEDS_LIST;
 
-#define DELAY_MS                 	(0)                  ///< Timer Delay in milli-seconds.
+#define DELAY_MS                 	(5)                  ///< Timer Delay in milli-seconds.
 #define NUM_LEDS									(240)
 #define MAX_INTENSE								(16)
 #define MAX_INTENSE2							(255)
 #define MIN_INTENSE								(1)
 #define DECAY_STEP								(30)
-#define	PRAB_FLASH								(20000)
-#define STEP_SRIDE1								(20)
-#define STEP_SRIDE2								(19)
+#define	PRAB_FLASH								(5000)
+#define STEP_SRIDE1								(-20)
+#define STEP_SRIDE2								(-18)
 
-static const nrf_drv_spi_t m_spi_master_0 = NRF_DRV_SPI_INSTANCE(0);
+#define SPI_INSTANCE  0 /**< SPI instance index. */
 
-static volatile bool m_transfer_completed = true;
-
-void volatile spi_master_x_event_handler(nrf_drv_spi_evt_t const * event)
-{
-		m_transfer_completed = true;
-}
-
-
-/**@brief Function for initializing a SPI master driver.
- *
- * @param[in] p_instance    Pointer to SPI master driver instance.
- * @param[in] lsb           Bits order LSB if true, MSB if false.
- */
-static void spi_master_init(nrf_drv_spi_t const * p_instance)
-{
-    uint32_t err_code = NRF_SUCCESS;
-
-    nrf_drv_spi_config_t config =
-    {
-        .ss_pin       = NRF_DRV_SPI_PIN_NOT_USED,
-        .irq_priority = APP_IRQ_PRIORITY_HIGH,
-        .orc          = 0xff,
-        .frequency    = NRF_DRV_SPI_FREQ_4M,
-        .mode         = NRF_DRV_SPI_MODE_3,
-        .bit_order    = NRF_DRV_SPI_BIT_ORDER_MSB_FIRST,
-    };
-
-    config.sck_pin  = SPIM0_SCK_PIN;
-    config.mosi_pin = SPIM0_MOSI_PIN;
-    config.miso_pin = NULL;
-    nrf_drv_spi_init(p_instance, &config, spi_master_x_event_handler);
-
-}
+static ws2812b_driver_spi_t spi0 = {
+	.spi = NRF_DRV_SPI_INSTANCE(0)
+};
+static ws2812b_driver_spi_t spi1 = {
+	.spi = NRF_DRV_SPI_INSTANCE(1)
+};
+static ws2812b_driver_spi_t spi2 = {
+	.spi = NRF_DRV_SPI_INSTANCE(2)
+};
 
 
+//void * spi0_event_handler(nrf_drv_spi_evt_t const * event);
+//void * spi1_event_handler(nrf_drv_spi_evt_t const * event);
+//void * spi2_event_handler(nrf_drv_spi_evt_t const * event);
 
+//void * spi0_event_handler(nrf_drv_spi_evt_t const * event)
+//{
+//		spi0_transfer_completed = true;
+//}
 
 /** @brief Function for main application entry.
  */
 int main(void)
 {
-		spi_buffer_t spi_buffer_color;
+		spi_buffer_t spi0_buffer;
 	  nrf_drv_spi_xfer_desc_t xfer_desc0;
 		xfer_desc0.p_rx_buffer = NULL;
 		xfer_desc0.rx_length   = 0;
@@ -100,9 +84,8 @@ int main(void)
     // Configure on-board LED-pins as outputs.
     LEDS_CONFIGURE(LEDS_MASK);
 
-    nrf_drv_spi_t const * p_instance;
-
-    p_instance = &m_spi_master_0;
+		// Initialize spi0 I/F
+		ws2812b_driver_spi_init(SPI_INSTANCE, &spi0);
 
 		// initialize led_array (base color array)
 		for(uint16_t i=0;i<NUM_LEDS;i++) {
@@ -123,9 +106,9 @@ int main(void)
 				led_array_flash2[i].blue  = 0;
 		}
 		
-		alloc_spi_buffer(&spi_buffer_color, NUM_LEDS);
+		alloc_spi_buffer(&spi0_buffer, NUM_LEDS);
 
-		spi_master_init(p_instance);
+		// spi_master_init(p_instance);
 	
 		for (;;)
 		{
@@ -177,13 +160,17 @@ int main(void)
 			// Update led_array_flash1
 			for(uint16_t i=0;i<NUM_LEDS;i++)
 			{
+				led_array_work[i] = led_array_flash1[i];
+			}
+			for(uint16_t i=0;i<NUM_LEDS;i++)
+			{
 				if ( rand()%PRAB_FLASH == 0 )
 				{
 					led_array_flash1[i].green = MAX_INTENSE2;
 					led_array_flash1[i].red   = MAX_INTENSE2;
 					led_array_flash1[i].blue  = MAX_INTENSE2;
 				}
-				else if ( i + STEP_SRIDE1 >= NUM_LEDS ) 
+				else if ( i + STEP_SRIDE1 >= NUM_LEDS || i + STEP_SRIDE1 < 0 ) 
 				{
 					led_array_flash1[i].green = 0;
 					led_array_flash1[i].red   = 0;
@@ -191,21 +178,21 @@ int main(void)
 				}
 				else
 				{
-					nextc = led_array_flash1[i+STEP_SRIDE1].green - DECAY_STEP;
+					nextc = led_array_work[i+STEP_SRIDE1].green - DECAY_STEP;
 					if ( nextc < 0 )
 					{
 						nextc = 0;
 					}
 					led_array_flash1[i].green = nextc;
 				
-					nextc = led_array_flash1[i+STEP_SRIDE1].red - DECAY_STEP;
+					nextc = led_array_work[i+STEP_SRIDE1].red - DECAY_STEP;
 					if ( nextc < 0 )
 					{
 						nextc = 0;
 					}
 					led_array_flash1[i].red = nextc;
 				
-						nextc = led_array_flash1[i+STEP_SRIDE1].blue - DECAY_STEP;
+						nextc = led_array_work[i+STEP_SRIDE1].blue - DECAY_STEP;
 					if ( nextc < 0 )
 					{
 						nextc = 0;
@@ -217,13 +204,17 @@ int main(void)
 			// Update led_array_flash2
 			for(uint16_t i=0;i<NUM_LEDS;i++)
 			{
+					led_array_work[i] = led_array_flash2[i];
+			}
+				for(uint16_t i=0;i<NUM_LEDS;i++)
+			{
 				if ( rand()%PRAB_FLASH == 0 )
 				{
 					led_array_flash2[i].green = MAX_INTENSE2;
 					led_array_flash2[i].red   = MAX_INTENSE2;
 					led_array_flash2[i].blue  = MAX_INTENSE2;
 				}
-				else if ( i + STEP_SRIDE2 >= NUM_LEDS ) 
+				else if ( i + STEP_SRIDE2 >= NUM_LEDS || i + STEP_SRIDE2 < 0 ) 
 				{
 					led_array_flash2[i].green = 0;
 					led_array_flash2[i].red   = 0;
@@ -231,21 +222,21 @@ int main(void)
 				}
 				else
 				{
-					nextc = led_array_flash2[i+STEP_SRIDE2].green - DECAY_STEP;
+					nextc = led_array_work[i+STEP_SRIDE2].green - DECAY_STEP;
 					if ( nextc < 0 )
 					{
 						nextc = 0;
 					}
 					led_array_flash2[i].green = nextc;
 				
-					nextc = led_array_flash2[i+STEP_SRIDE2].red - DECAY_STEP;
+					nextc = led_array_work[i+STEP_SRIDE2].red - DECAY_STEP;
 					if ( nextc < 0 )
 					{
 						nextc = 0;
 					}
 					led_array_flash2[i].red = nextc;
 				
-						nextc = led_array_flash2[i+STEP_SRIDE2].blue - DECAY_STEP;
+						nextc = led_array_work[i+STEP_SRIDE2].blue - DECAY_STEP;
 					if ( nextc < 0 )
 					{
 						nextc = 0;
@@ -295,33 +286,10 @@ int main(void)
 			}
 
 			// LED update
-			set_buff(led_array_work, spi_buffer_color);	// set up SPI buffer
-			form_spi_sector(spi_buffer_color);          // set up SPI buffer (EOS)
-				
-			xfer_desc0.p_tx_buffer = spi_buffer_color.buff;
-			xfer_desc0.tx_length    = spi_buffer_color.sector_size;
-			rest = spi_buffer_color.length;
-
-			// SPI transfer loop
-			while(rest > spi_buffer_color.sector_size)
-			{
-				m_transfer_completed = false;
-				nrf_drv_spi_xfer(p_instance, &xfer_desc0, 0);
-				while (! m_transfer_completed) {}
-
-				xfer_desc0.p_tx_buffer += spi_buffer_color.sector_size;
-				rest -= spi_buffer_color.sector_size;
-			}
-			// final buffer
-			xfer_desc0.tx_length    = rest;
-			m_transfer_completed = false;
-			nrf_drv_spi_xfer(p_instance, &xfer_desc0, 0);
-			while (! m_transfer_completed) {}
-			
-			// LED update transfer finished
+      ws2812b_driver_xfer(led_array_work, spi0_buffer, spi0);
 				
 			// delay (LED will be updated this period)
-			// nrf_delay_ms(DELAY_MS);
+			nrf_delay_ms(DELAY_MS);
 				
 			LEDS_INVERT(1 << leds_list[0]); // toggle on-board LED
 		}

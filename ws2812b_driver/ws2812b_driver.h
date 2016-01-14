@@ -37,6 +37,12 @@ typedef struct
 		uint8_t sector_size; // buffer size per one SPI transaction
 } spi_buffer_t;
 
+typedef struct
+{
+		nrf_drv_spi_t spi;
+		volatile bool * transfer_completed;
+} ws2812b_driver_spi_t;
+
 void alloc_spi_buffer(spi_buffer_t * spi_buffer, uint16_t num_leds);
 
 void sectorize_spi_buffer(spi_buffer_t spi_buffer);
@@ -47,21 +53,19 @@ void set_buff(rgb_led_t* rgb_led, spi_buffer_t spi_buffer);
 
 void form_spi_sector(spi_buffer_t spi_buffer);
 
-void spi_master_init(nrf_drv_spi_t const * p_instance);
+void spi_master_init(ws2812b_driver_spi_t const * p_instance);
 
-//static volatile bool m_transfer_completed = true;
+void ws2812b_driver_spi_init(uint8_t id,ws2812b_driver_spi_t *spi);
 
-//void volatile spi_master_x_event_handler(nrf_drv_spi_evt_t const * event);
+void ws2812b_driver_xfer(rgb_led_t * led_array, spi_buffer_t spi_buffer, ws2812b_driver_spi_t spi);
 
-///**@brief Handler for SPI0 master events.
-// *
-// * @param[in] event SPI master event.
-// */
-//static nrf_drv_spi_handler_t spi_master_x_event_handler(nrf_drv_spi_evt_t * event)
-//{
-//		m_transfer_completed = true;
-//}
+static volatile bool spi0_transfer_completed = true;
+static volatile bool spi1_transfer_completed = true;
+static volatile bool spi2_transfer_completed = true;
 
+void spi0_event_handler(nrf_drv_spi_evt_t const * event);
+void spi1_event_handler(nrf_drv_spi_evt_t const * event);
+void spi2_event_handler(nrf_drv_spi_evt_t const * event);
 
 
 #endif // WS2812B_DRIVER_H__

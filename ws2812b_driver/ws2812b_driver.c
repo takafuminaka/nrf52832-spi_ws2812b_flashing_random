@@ -7,10 +7,6 @@
  */
 
 #include "ws2812b_driver.h"
-#include "nrf_drv_spi.h"
-//#include "app_error.h"
-//#include "app_util_platform.h"
-//#include "bsp.h"
 
 void alloc_spi_buffer(spi_buffer_t * spi_buffer, uint16_t num_leds)
 {
@@ -19,7 +15,7 @@ void alloc_spi_buffer(spi_buffer_t * spi_buffer, uint16_t num_leds)
 	spi_buffer->sector_size = LED_SECTOR_SIZE * 12; 
 }
 
-void	form_spi_sector(spi_buffer_t spi_buffer)
+void form_spi_sector(spi_buffer_t spi_buffer)
 {
 	uint8_t* p = spi_buffer.buff-1;
 	for(uint16_t i=0;i<spi_buffer.length;i+=spi_buffer.sector_size)
@@ -76,39 +72,91 @@ void set_buff(rgb_led_t * rgb_led, spi_buffer_t spi_buffer)
 	}
 }
 
-//nrf_drv_spi_handler_t spi_master_x_event_handler(nrf_drv_spi_evt_t * event)
-//{
-//		m_transfer_completed = true;
-//}
+void ws2812b_driver_spi_init(uint8_t id, ws2812b_driver_spi_t * spi)
+{
+	nrf_drv_spi_handler_t handler;
 
-//void volatile spi_master_x_event_handler(nrf_drv_spi_evt_t const * event)
-//{
-//		m_transfer_completed = true;
-//}
+	nrf_drv_spi_config_t spi_config =
+    {
+        .ss_pin       = NRF_DRV_SPI_PIN_NOT_USED,
+        .irq_priority = APP_IRQ_PRIORITY_HIGH,
+        .frequency    = NRF_DRV_SPI_FREQ_4M,
+        .mode         = NRF_DRV_SPI_MODE_1,
+        .bit_order    = NRF_DRV_SPI_BIT_ORDER_MSB_FIRST,
+				.miso_pin 		= NRF_DRV_SPI_PIN_NOT_USED,
+    };
+
+		switch(id)
+		{
+			case(0):
+				spi_config.sck_pin  = SPIM0_SCK_PIN;
+				spi_config.mosi_pin = SPIM0_MOSI_PIN;
+				handler = spi0_event_handler;
+				spi->transfer_completed = &spi0_transfer_completed;
+			break;
+			case(1):
+				spi_config.sck_pin  = SPIM1_SCK_PIN;
+				spi_config.mosi_pin = SPIM1_MOSI_PIN;
+				handler = spi1_event_handler;
+				spi->transfer_completed = &spi1_transfer_completed;
+				break;
+			case(2):
+				spi_config.sck_pin  = SPIM2_SCK_PIN;
+				spi_config.mosi_pin = SPIM2_MOSI_PIN;
+				handler = spi2_event_handler;
+				spi->transfer_completed = &spi2_transfer_completed;
+				break;
+		}
+		nrf_drv_spi_init(&(spi->spi), &spi_config, handler);
+
+}	
+
+void spi0_event_handler(nrf_drv_spi_evt_t const * event)
+{
+		spi0_transfer_completed = true;
+}
+
+void spi1_event_handler(nrf_drv_spi_evt_t const * event)
+{
+		spi1_transfer_completed = true;
+}
+
+void spi2_event_handler(nrf_drv_spi_evt_t const * event)
+{
+		spi2_transfer_completed = true;
+}
 
 
-///**@brief Function for initializing a SPI master driver.
-// *
-// * @param[in] p_instance    Pointer to SPI master driver instance.
-// * @param[in] lsb           Bits order LSB if true, MSB if false.
-// */
-//void spi_master_init(nrf_drv_spi_t const * p_instance)
-//{
-//    uint32_t err_code = NRF_SUCCESS;
+void ws2812b_driver_xfer(rgb_led_t * led_array, spi_buffer_t spi_buffer, ws2812b_driver_spi_t spi_base)
+{
+		nrf_drv_spi_t spi = spi_base.spi;
+	
+	  nrf_drv_spi_xfer_desc_t xfer_desc;
 
-//    nrf_drv_spi_config_t config =
-//    {
-//        .ss_pin       = NRF_DRV_SPI_PIN_NOT_USED,
-//        .irq_priority = APP_IRQ_PRIORITY_HIGH,
-//        .orc          = 0xff,
-//        .frequency    = NRF_DRV_SPI_FREQ_4M,
-//        .mode         = NRF_DRV_SPI_MODE_3,
-//        .bit_order    = NRF_DRV_SPI_BIT_ORDER_MSB_FIRST,
-//    };
+		set_buff(led_array,spi_buffer);
+		form_spi_sector(spi_buffer);
+	
+		xfer_desc.p_tx_buffer = spi_buffer.buff;
+		xfer_desc.tx_length    = spi_buffer.sector_size;
+		xfer_desc.p_rx_buffer = NULL;
+		xfer_desc.rx_length    = NULL;
+		
+ 		uint16_t rest = spi_buffer.length;
+			
+		// SPI transfer loop
+		while(rest > spi_buffer.sector_size)
+		{
+			*spi_base.transfer_completed = false;
+			nrf_drv_spi_xfer(&spi, &xfer_desc, 0);
+			while (! *spi_base.transfer_completed) {}
 
-//    config.sck_pin  = SPIM0_SCK_PIN;
-//    config.mosi_pin = SPIM0_MOSI_PIN;
-//    config.miso_pin = NULL;
-//    nrf_drv_spi_init(p_instance, &config, spi_master_x_event_handler); 
-//}
+			xfer_desc.p_tx_buffer += spi_buffer.sector_size;
+			rest -= spi_buffer.sector_size;
+		}
+		// final buffer
+		xfer_desc.tx_length    = rest;
+		*spi_base.transfer_completed = false;
+		nrf_drv_spi_xfer(&spi, &xfer_desc, 0);
+		while (! *spi_base.transfer_completed) {}
 
+}  
