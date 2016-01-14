@@ -3,7 +3,7 @@
  * Auto generated Run-Time-Environment Component Configuration File
  *      *** Do not modify ! ***
  *
- * Project: 'spi_master_pca10036' 
+ * Project: 'spi_master_pca10040' 
  * Target:  'nrf52832_xxaa' 
  */
 
