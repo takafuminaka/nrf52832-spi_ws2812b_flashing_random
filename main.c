@@ -41,6 +41,7 @@ const uint8_t leds_list[LEDS_NUMBER] = LEDS_LIST;
 #define	PRAB_FLASH								(5000)
 #define STEP_SRIDE1								(-20)
 #define STEP_SRIDE2								(-18)
+#define CURRENT_LIMIT							(1500) // mA
 
 #define SPI_INSTANCE  0 /**< SPI instance index. */
 
@@ -54,24 +55,14 @@ static ws2812b_driver_spi_t spi2 = {
 	.spi = NRF_DRV_SPI_INSTANCE(2)
 };
 
-
-//void * spi0_event_handler(nrf_drv_spi_evt_t const * event);
-//void * spi1_event_handler(nrf_drv_spi_evt_t const * event);
-//void * spi2_event_handler(nrf_drv_spi_evt_t const * event);
-
-//void * spi0_event_handler(nrf_drv_spi_evt_t const * event)
-//{
-//		spi0_transfer_completed = true;
-//}
-
 /** @brief Function for main application entry.
  */
 int main(void)
 {
 		spi_buffer_t spi0_buffer;
-	  nrf_drv_spi_xfer_desc_t xfer_desc0;
-		xfer_desc0.p_rx_buffer = NULL;
-		xfer_desc0.rx_length   = 0;
+	  // nrf_drv_spi_xfer_desc_t xfer_desc0;
+		// xfer_desc0.p_rx_buffer = NULL;
+		// xfer_desc0.rx_length   = 0;
 	
 		rgb_led_t led_array[NUM_LEDS];				// array for base color
 		rgb_led_t led_array_flash1[NUM_LEDS]; // array for flash right-up to left-down
@@ -86,6 +77,8 @@ int main(void)
 
 		// Initialize spi0 I/F
 		ws2812b_driver_spi_init(SPI_INSTANCE, &spi0);
+		// ws2812b_driver_spi_init(SPI_INSTANCE, &spi1);
+		// ws2812b_driver_spi_init(SPI_INSTANCE, &spi2);
 
 		// initialize led_array (base color array)
 		for(uint16_t i=0;i<NUM_LEDS;i++) {
@@ -108,8 +101,6 @@ int main(void)
 		
 		alloc_spi_buffer(&spi0_buffer, NUM_LEDS);
 
-		// spi_master_init(p_instance);
-	
 		for (;;)
 		{
 			LEDS_ON(1 << leds_list[0]);
@@ -117,181 +108,195 @@ int main(void)
 			LEDS_ON(1 << leds_list[2]);
 			LEDS_ON(1 << leds_list[3]);
 
+			// toggle LED
 			LEDS_INVERT(1 << leds_list[0]);
 			
-			for(uint16_t i=0;i<NUM_LEDS;i++) {
-				nextc = led_array[i].green + rand()%3 -1;
-				if ( nextc < MIN_INTENSE )
-				{
-					nextc = MIN_INTENSE;
-				}
-				
-				if ( nextc > MAX_INTENSE )
-				{
-					nextc = MAX_INTENSE;
-				}
-				led_array[i].green = nextc;
-				
-				nextc = led_array[i].red + rand()%3 -1;
-				if ( nextc < MIN_INTENSE )
-				{
-					nextc = MIN_INTENSE;
-				}
-				
-				if ( nextc > MAX_INTENSE )
-				{
-					nextc = MAX_INTENSE;
-				}
-				led_array[i].red = nextc;
+			// animate and set up led_array_work 
+			
+			// update led_array
+			{
+				for(uint16_t i=0;i<NUM_LEDS;i++) {
+					nextc = led_array[i].green + rand()%3 -1;
+					if ( nextc < MIN_INTENSE )
+					{
+						nextc = MIN_INTENSE;
+					}
+					
+					if ( nextc > MAX_INTENSE )
+					{
+						nextc = MAX_INTENSE;
+					}
+					led_array[i].green = nextc;
+					
+					nextc = led_array[i].red + rand()%3 -1;
+					if ( nextc < MIN_INTENSE )
+					{
+						nextc = MIN_INTENSE;
+					}
+					
+					if ( nextc > MAX_INTENSE )
+					{
+						nextc = MAX_INTENSE;
+					}
+					led_array[i].red = nextc;
 
-				nextc = led_array[i].blue + rand()%3 -1;
-				if ( nextc < MIN_INTENSE )
-				{
-					nextc = MIN_INTENSE;
+					nextc = led_array[i].blue + rand()%3 -1;
+					if ( nextc < MIN_INTENSE )
+					{
+						nextc = MIN_INTENSE;
+					}
+					
+					if ( nextc > MAX_INTENSE )
+					{
+						nextc = MAX_INTENSE;
+					}
+					led_array[i].blue = nextc;
 				}
-				
-				if ( nextc > MAX_INTENSE )
-				{
-					nextc = MAX_INTENSE;
-				}
-				led_array[i].blue = nextc;
 			}
-
 			// Update led_array_flash1
-			for(uint16_t i=0;i<NUM_LEDS;i++)
-			{
-				led_array_work[i] = led_array_flash1[i];
-			}
-			for(uint16_t i=0;i<NUM_LEDS;i++)
-			{
-				if ( rand()%PRAB_FLASH == 0 )
+      {
+				for(uint16_t i=0;i<NUM_LEDS;i++)
 				{
-					led_array_flash1[i].green = MAX_INTENSE2;
-					led_array_flash1[i].red   = MAX_INTENSE2;
-					led_array_flash1[i].blue  = MAX_INTENSE2;
+					led_array_work[i] = led_array_flash1[i];
 				}
-				else if ( i + STEP_SRIDE1 >= NUM_LEDS || i + STEP_SRIDE1 < 0 ) 
+				for(uint16_t i=0;i<NUM_LEDS;i++)
 				{
-					led_array_flash1[i].green = 0;
-					led_array_flash1[i].red   = 0;
-					led_array_flash1[i].blue  = 0;
-				}
-				else
-				{
-					nextc = led_array_work[i+STEP_SRIDE1].green - DECAY_STEP;
-					if ( nextc < 0 )
+					if ( rand()%PRAB_FLASH == 0 )
 					{
-						nextc = 0;
+						led_array_flash1[i].green = MAX_INTENSE2;
+						led_array_flash1[i].red   = MAX_INTENSE2;
+						led_array_flash1[i].blue  = MAX_INTENSE2;
 					}
-					led_array_flash1[i].green = nextc;
-				
-					nextc = led_array_work[i+STEP_SRIDE1].red - DECAY_STEP;
-					if ( nextc < 0 )
+					else if ( i + STEP_SRIDE1 >= NUM_LEDS || i + STEP_SRIDE1 < 0 ) 
 					{
-						nextc = 0;
+						led_array_flash1[i].green = 0;
+						led_array_flash1[i].red   = 0;
+						led_array_flash1[i].blue  = 0;
 					}
-					led_array_flash1[i].red = nextc;
-				
-						nextc = led_array_work[i+STEP_SRIDE1].blue - DECAY_STEP;
-					if ( nextc < 0 )
+					else
 					{
-						nextc = 0;
+						nextc = led_array_work[i+STEP_SRIDE1].green - DECAY_STEP;
+						if ( nextc < 0 )
+						{
+							nextc = 0;
+						}
+						led_array_flash1[i].green = nextc;
+					
+						nextc = led_array_work[i+STEP_SRIDE1].red - DECAY_STEP;
+						if ( nextc < 0 )
+						{
+							nextc = 0;
+						}
+						led_array_flash1[i].red = nextc;
+					
+							nextc = led_array_work[i+STEP_SRIDE1].blue - DECAY_STEP;
+						if ( nextc < 0 )
+						{
+							nextc = 0;
+						}
+						led_array_flash1[i].blue = nextc;
 					}
-					led_array_flash1[i].blue = nextc;
 				}
 			}
 			
 			// Update led_array_flash2
-			for(uint16_t i=0;i<NUM_LEDS;i++)
 			{
-					led_array_work[i] = led_array_flash2[i];
-			}
 				for(uint16_t i=0;i<NUM_LEDS;i++)
-			{
-				if ( rand()%PRAB_FLASH == 0 )
 				{
-					led_array_flash2[i].green = MAX_INTENSE2;
-					led_array_flash2[i].red   = MAX_INTENSE2;
-					led_array_flash2[i].blue  = MAX_INTENSE2;
+						led_array_work[i] = led_array_flash2[i];
 				}
-				else if ( i + STEP_SRIDE2 >= NUM_LEDS || i + STEP_SRIDE2 < 0 ) 
+					for(uint16_t i=0;i<NUM_LEDS;i++)
 				{
-					led_array_flash2[i].green = 0;
-					led_array_flash2[i].red   = 0;
-					led_array_flash2[i].blue  = 0;
-				}
-				else
-				{
-					nextc = led_array_work[i+STEP_SRIDE2].green - DECAY_STEP;
-					if ( nextc < 0 )
+					if ( rand()%PRAB_FLASH == 0 )
 					{
-						nextc = 0;
+						led_array_flash2[i].green = MAX_INTENSE2;
+						led_array_flash2[i].red   = MAX_INTENSE2;
+						led_array_flash2[i].blue  = MAX_INTENSE2;
 					}
-					led_array_flash2[i].green = nextc;
-				
-					nextc = led_array_work[i+STEP_SRIDE2].red - DECAY_STEP;
-					if ( nextc < 0 )
+					else if ( i + STEP_SRIDE2 >= NUM_LEDS || i + STEP_SRIDE2 < 0 ) 
 					{
-						nextc = 0;
+						led_array_flash2[i].green = 0;
+						led_array_flash2[i].red   = 0;
+						led_array_flash2[i].blue  = 0;
 					}
-					led_array_flash2[i].red = nextc;
-				
-						nextc = led_array_work[i+STEP_SRIDE2].blue - DECAY_STEP;
-					if ( nextc < 0 )
+					else
 					{
-						nextc = 0;
+						nextc = led_array_work[i+STEP_SRIDE2].green - DECAY_STEP;
+						if ( nextc < 0 )
+						{
+							nextc = 0;
+						}
+						led_array_flash2[i].green = nextc;
+					
+						nextc = led_array_work[i+STEP_SRIDE2].red - DECAY_STEP;
+						if ( nextc < 0 )
+						{
+							nextc = 0;
+						}
+						led_array_flash2[i].red = nextc;
+					
+							nextc = led_array_work[i+STEP_SRIDE2].blue - DECAY_STEP;
+						if ( nextc < 0 )
+						{
+							nextc = 0;
+						}
+						led_array_flash2[i].blue = nextc;
 					}
-					led_array_flash2[i].blue = nextc;
 				}
 			}
-
 			// Merge led arrays	
-			for(uint16_t i=0;i<NUM_LEDS;i++)
 			{
-				nextc = led_array[i].green + led_array_flash1[i].green + led_array_flash2[i].green;
-				if ( nextc < MIN_INTENSE )
+				for(uint16_t i=0;i<NUM_LEDS;i++)
 				{
-					nextc = MIN_INTENSE;
-				}
-				
-				if ( nextc > MAX_INTENSE2 )
-				{
-					nextc = MAX_INTENSE2;
-				}
-				led_array_work[i].green = nextc;
-				
-				nextc = led_array[i].red + led_array_flash1[i].red + led_array_flash2[i].red;
-				if ( nextc < MIN_INTENSE )
-				{
-					nextc = MIN_INTENSE;
-				}
-				
-				if ( nextc > MAX_INTENSE2 )
-				{
-					nextc = MAX_INTENSE2;
-				}
-				led_array_work[i].red = nextc;
+					nextc = led_array[i].green + led_array_flash1[i].green + led_array_flash2[i].green;
+					if ( nextc < MIN_INTENSE )
+					{
+						nextc = MIN_INTENSE;
+					}
+					
+					if ( nextc > MAX_INTENSE2 )
+					{
+						nextc = MAX_INTENSE2;
+					}
+					led_array_work[i].green = nextc;
+					
+					nextc = led_array[i].red + led_array_flash1[i].red + led_array_flash2[i].red;
+					if ( nextc < MIN_INTENSE )
+					{
+						nextc = MIN_INTENSE;
+					}
+					
+					if ( nextc > MAX_INTENSE2 )
+					{
+						nextc = MAX_INTENSE2;
+					}
+					led_array_work[i].red = nextc;
 
-				nextc = led_array[i].blue + led_array_flash1[i].blue + led_array_flash2[i].blue;
-				if ( nextc < MIN_INTENSE )
-				{
-					nextc = MIN_INTENSE;
+					nextc = led_array[i].blue + led_array_flash1[i].blue + led_array_flash2[i].blue;
+					if ( nextc < MIN_INTENSE )
+					{
+						nextc = MIN_INTENSE;
+					}
+					
+					if ( nextc > MAX_INTENSE2 )
+					{
+						nextc = MAX_INTENSE2;
+					}
+					led_array_work[i].blue = nextc;
 				}
-				
-				if ( nextc > MAX_INTENSE2 )
-				{
-					nextc = MAX_INTENSE2;
-				}
-				led_array_work[i].blue = nextc;
 			}
 
+			// dim LEDs until current limit 
+			ws2812b_driver_current_cap(led_array_work, NUM_LEDS, CURRENT_LIMIT);
+			
 			// LED update
       ws2812b_driver_xfer(led_array_work, spi0_buffer, spi0);
 				
 			// delay (LED will be updated this period)
 			nrf_delay_ms(DELAY_MS);
 				
-			LEDS_INVERT(1 << leds_list[0]); // toggle on-board LED
+			// toggle on-board LED
+			LEDS_INVERT(1 << leds_list[0]);
 		}
 }
 

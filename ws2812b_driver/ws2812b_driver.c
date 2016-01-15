@@ -8,6 +8,10 @@
 
 #include "ws2812b_driver.h"
 
+static volatile bool spi0_transfer_completed = true;
+static volatile bool spi1_transfer_completed = true;
+static volatile bool spi2_transfer_completed = true;
+
 void alloc_spi_buffer(spi_buffer_t * spi_buffer, uint16_t num_leds)
 {
 	spi_buffer->buff = malloc(num_leds * 12);
@@ -159,4 +163,59 @@ void ws2812b_driver_xfer(rgb_led_t * led_array, spi_buffer_t spi_buffer, ws2812b
 		nrf_drv_spi_xfer(&spi, &xfer_desc, 0);
 		while (! *spi_base.transfer_completed) {}
 
-}  
+}
+
+void ws2812b_driver_current_cap(rgb_led_t * led_array, uint16_t num_leds, uint32_t limit)
+{
+	uint32_t sum0 = ws2812b_driver_calc_current(led_array, num_leds);
+	if ( sum0 > limit ) {
+		// fact = (limit - num_leds) / (sum0 - num_leds);
+		int32_t factn = limit - num_leds;
+		if ( factn < 0 )
+		{
+			factn = 1;
+		}
+		int32_t factd = sum0 - num_leds;
+		if ( factd < 0 )
+		{
+			factd = 1;
+		}
+
+		rgb_led_t * p = led_array;	
+		rgb_led_t dnext;
+		for(uint16_t i=0;i<num_leds;i++)
+		{
+			dnext.green = p->green * factn / factd;
+			dnext.red   = p->red   * factn / factd;
+			dnext.blue  = p->blue  * factn / factd;
+
+			if ( dnext.green == 0 && p->green > 0 )
+			{
+				dnext.green = 1;
+			}
+			if ( dnext.red   == 0 && p->red   > 0 ) 
+			{
+				dnext.red   = 1;
+			}
+			if ( dnext.blue  == 0 && p->blue  > 0 )
+			{
+				dnext.blue  = 1;
+			}
+			*p = dnext;
+			p++;
+		} // i
+ 	}	
+}
+
+uint32_t ws2812b_driver_calc_current(rgb_led_t * led_array, uint16_t num_leds)
+{
+	uint32_t sum = 0;
+	rgb_led_t * p = led_array;
+	for(uint16_t i=0;i<num_leds;i++)
+	{
+		sum += p->green + p->red + p->blue;
+		p++;
+	}
+	
+	return(num_leds + (sum*45)/(255*3)); // mA
+}

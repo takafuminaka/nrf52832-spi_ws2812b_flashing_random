@@ -59,13 +59,13 @@ void ws2812b_driver_spi_init(uint8_t id,ws2812b_driver_spi_t *spi);
 
 void ws2812b_driver_xfer(rgb_led_t * led_array, spi_buffer_t spi_buffer, ws2812b_driver_spi_t spi);
 
-static volatile bool spi0_transfer_completed = true;
-static volatile bool spi1_transfer_completed = true;
-static volatile bool spi2_transfer_completed = true;
-
 void spi0_event_handler(nrf_drv_spi_evt_t const * event);
 void spi1_event_handler(nrf_drv_spi_evt_t const * event);
 void spi2_event_handler(nrf_drv_spi_evt_t const * event);
+
+void ws2812b_driver_current_cap(rgb_led_t * led_array, uint16_t num_leds, uint32_t limit);
+
+uint32_t ws2812b_driver_calc_current(rgb_led_t * led_array, uint16_t num_leds);
 
 
 #endif // WS2812B_DRIVER_H__
