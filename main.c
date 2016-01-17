@@ -32,16 +32,17 @@
 
 const uint8_t leds_list[LEDS_NUMBER] = LEDS_LIST;
 
-#define DELAY_MS                 	(5)                  ///< Timer Delay in milli-seconds.
-#define NUM_LEDS									(240)
-#define MAX_INTENSE								(16)
-#define MAX_INTENSE2							(255)
-#define MIN_INTENSE								(1)
-#define DECAY_STEP								(30)
-#define	PRAB_FLASH								(5000)
-#define STEP_SRIDE1								(-20)
-#define STEP_SRIDE2								(-18)
-#define CURRENT_LIMIT							(1500) // mA
+#define DELAY_MS                 	(5)			//	Timer Delay in milli-seconds.
+#define NUM_LEDS					(240)		//	Count of LEDs
+#define MAX_INTENSE					(16)		//
+#define MAX_INTENSE2				(255)
+#define MIN_INTENSE					(1)
+#define DECAY_STEP					(30)
+#define	PRAB_FLASH					(5000)
+#define	ROW_SIZE					(19)			// Count of LEDs for each line
+#define STEP_SRIDE1					(-(ROW_SIZE+1))
+#define STEP_SRIDE2					(-(ROW_SIZE-1))
+#define CURRENT_LIMIT				(1500) 			// Current limit of LEDs (mA)
 
 #define SPI_INSTANCE  0 /**< SPI instance index. */
 
@@ -60,9 +61,6 @@ static ws2812b_driver_spi_t spi2 = {
 int main(void)
 {
 		spi_buffer_t spi0_buffer;
-	  // nrf_drv_spi_xfer_desc_t xfer_desc0;
-		// xfer_desc0.p_rx_buffer = NULL;
-		// xfer_desc0.rx_length   = 0;
 	
 		rgb_led_t led_array[NUM_LEDS];				// array for base color
 		rgb_led_t led_array_flash1[NUM_LEDS]; // array for flash right-up to left-down
@@ -72,8 +70,8 @@ int main(void)
 		uint16_t rest;
 		int16_t nextc;
 		
-    // Configure on-board LED-pins as outputs.
-    LEDS_CONFIGURE(LEDS_MASK);
+		// Configure on-board LED-pins as outputs.
+		LEDS_CONFIGURE(LEDS_MASK);
 
 		// Initialize spi0 I/F
 		ws2812b_driver_spi_init(SPI_INSTANCE, &spi0);
@@ -290,7 +288,7 @@ int main(void)
 			ws2812b_driver_current_cap(led_array_work, NUM_LEDS, CURRENT_LIMIT);
 			
 			// LED update
-      ws2812b_driver_xfer(led_array_work, spi0_buffer, spi0);
+			ws2812b_driver_xfer(led_array_work, spi0_buffer, spi0);
 				
 			// delay (LED will be updated this period)
 			nrf_delay_ms(DELAY_MS);
