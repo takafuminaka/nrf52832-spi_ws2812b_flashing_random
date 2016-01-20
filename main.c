@@ -46,21 +46,28 @@ const uint8_t leds_list[LEDS_NUMBER] = LEDS_LIST;
 
 #define SPI_INSTANCE  0 /**< SPI instance index. */
 
-static ws2812b_driver_spi_t spi0 = {
-	.spi = NRF_DRV_SPI_INSTANCE(0)
+static ws2812b_driver_spi_t spi[NUM_SPI_BUS] = {
+	{
+		.spi = NRF_DRV_SPI_INSTANCE(0)
+	},
+#if ( NUM_SPI_BUS > 1 ) 
+	{
+		.spi = NRF_DRV_SPI_INSTANCE(1)
+	},
+#endif
+#if ( NUM_SPI_BUS > 2 ) 
+	{
+		.spi = NRF_DRV_SPI_INSTANCE(2)
+	},
+#endif
 };
-static ws2812b_driver_spi_t spi1 = {
-	.spi = NRF_DRV_SPI_INSTANCE(1)
-};
-static ws2812b_driver_spi_t spi2 = {
-	.spi = NRF_DRV_SPI_INSTANCE(2)
-};
+
 
 /** @brief Function for main application entry.
  */
 int main(void)
 {
-		spi_buffer_t spi0_buffer;
+		spi_buffer_t spi_buffer[NUM_SPI_BUS];
 	
 		rgb_led_t led_array[NUM_LEDS];				// array for base color
 		rgb_led_t led_array_flash1[NUM_LEDS]; // array for flash right-up to left-down
@@ -73,11 +80,11 @@ int main(void)
 		// Configure on-board LED-pins as outputs.
 		LEDS_CONFIGURE(LEDS_MASK);
 
-		// Initialize spi0 I/F
-		ws2812b_driver_spi_init(SPI_INSTANCE, &spi0);
-		// ws2812b_driver_spi_init(SPI_INSTANCE, &spi1);
-		// ws2812b_driver_spi_init(SPI_INSTANCE, &spi2);
-
+		// Initialize spi I/F
+		for(uint8_t i=0;i<NUM_SPI_BUS;i++) {
+			ws2812b_driver_spi_init(SPI_INSTANCE, &spi[i]);
+		}
+	
 		// initialize led_array (base color array)
 		for(uint16_t i=0;i<NUM_LEDS;i++) {
 			int c = (i % 7) + 1;
@@ -96,9 +103,11 @@ int main(void)
 				led_array_flash2[i].red   = 0;
 				led_array_flash2[i].blue  = 0;
 		}
-		
-		alloc_spi_buffer(&spi0_buffer, NUM_LEDS);
 
+		for(uint8_t i=0;i<NUM_SPI_BUS;i++) {
+				alloc_spi_buffer(&spi_buffer[i], NUM_LEDS);
+		}
+		
 		for (;;)
 		{
 			LEDS_ON(1 << leds_list[0]);
@@ -288,7 +297,7 @@ int main(void)
 			ws2812b_driver_current_cap(led_array_work, NUM_LEDS, CURRENT_LIMIT);
 			
 			// LED update
-			ws2812b_driver_xfer(led_array_work, spi0_buffer, spi0);
+			ws2812b_driver_xfer(led_array_work, spi_buffer[0], spi[0]);
 				
 			// delay (LED will be updated this period)
 			nrf_delay_ms(DELAY_MS);

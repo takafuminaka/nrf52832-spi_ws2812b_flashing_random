@@ -8,9 +8,9 @@
 
 #include "ws2812b_driver.h"
 
-static volatile bool spi0_transfer_completed = true;
-static volatile bool spi1_transfer_completed = true;
-static volatile bool spi2_transfer_completed = true;
+static volatile bool spi_transfer_completed[NUM_SPI_BUS];
+
+static ws2812b_driver_spi_t  * ws2812b_driver_spi[NUM_SPI_BUS];
 
 void alloc_spi_buffer(spi_buffer_t * spi_buffer, uint16_t num_leds)
 {
@@ -96,72 +96,87 @@ void ws2812b_driver_spi_init(uint8_t id, ws2812b_driver_spi_t * spi)
 				spi_config.sck_pin  = SPIM0_SCK_PIN;
 				spi_config.mosi_pin = SPIM0_MOSI_PIN;
 				handler = spi0_event_handler;
-				spi->transfer_completed = &spi0_transfer_completed;
 			break;
+#if ( NUM_SPI_BUF > 1 )
 			case(1):
 				spi_config.sck_pin  = SPIM1_SCK_PIN;
 				spi_config.mosi_pin = SPIM1_MOSI_PIN;
 				handler = spi1_event_handler;
-				spi->transfer_completed = &spi1_transfer_completed;
 				break;
+#if ( NUM_SPI_BUF > 2 )
 			case(2):
 				spi_config.sck_pin  = SPIM2_SCK_PIN;
 				spi_config.mosi_pin = SPIM2_MOSI_PIN;
 				handler = spi2_event_handler;
-				spi->transfer_completed = &spi2_transfer_completed;
 				break;
+#endif
+#endif
+
 		}
+		spi->transfer_completed = &spi_transfer_completed[id];
+		ws2812b_driver_spi[id] = spi;
 		nrf_drv_spi_init(&(spi->spi), &spi_config, handler);
 
 }	
 
 void spi0_event_handler(nrf_drv_spi_evt_t const * event)
 {
-		spi0_transfer_completed = true;
+  ws2812b_driver_spi_t * spi_base = ws2812b_driver_spi[0];
+	
+//	if ( spi_base->rest > 0 )
+//	{
+//		spi_base->xfer_desc.tx_length   = (spi_base->spi_buffer.sector_size>spi_base->rest)?spi_base->rest:spi_base->spi_buffer.sector_size;
+//		// *spi_base->transfer_completed = false;
+//		nrf_drv_spi_xfer(&spi_base->spi, &spi_base->xfer_desc, 0);
+//		spi_base->xfer_desc.p_tx_buffer += spi_base->spi_buffer.sector_size;
+//		spi_base->rest -= spi_base->xfer_desc.tx_length;
+//  }
+//	else
+//	{
+		*spi_base->transfer_completed = true;
+// 	}
 }
 
+#if ( NUM_SPI_BUF > 1 )
 void spi1_event_handler(nrf_drv_spi_evt_t const * event)
 {
-		spi1_transfer_completed = true;
+		spi_transfer_completed[1] = true;
 }
+#endif
 
+#if ( NUM_SPI_BUF > 2 )
 void spi2_event_handler(nrf_drv_spi_evt_t const * event)
 {
-		spi2_transfer_completed = true;
+		spi_transfer_completed[2] = true;
 }
-
+#endif
 
 void ws2812b_driver_xfer(rgb_led_t * led_array, spi_buffer_t spi_buffer, ws2812b_driver_spi_t spi_base)
 {
 		nrf_drv_spi_t spi = spi_base.spi;
-	
-	  nrf_drv_spi_xfer_desc_t xfer_desc;
 
-		set_buff(led_array,spi_buffer);
-		form_spi_sector(spi_buffer);
+		spi_base.spi_buffer = spi_buffer;
 	
-		xfer_desc.p_tx_buffer = spi_buffer.buff;
-		xfer_desc.tx_length    = spi_buffer.sector_size;
-		xfer_desc.p_rx_buffer = NULL;
-		xfer_desc.rx_length    = NULL;
-		
- 		uint16_t rest = spi_buffer.length;
-			
+		set_buff(led_array,spi_base.spi_buffer);
+		form_spi_sector(spi_base.spi_buffer);
+	
+		spi_base.xfer_desc.p_tx_buffer = spi_base.spi_buffer.buff;
+		spi_base.xfer_desc.p_rx_buffer = NULL;
+		spi_base.xfer_desc.rx_length   = NULL;
+	
+		spi_base.rest = spi_base.spi_buffer.length;
+	
 		// SPI transfer loop
-		while(rest > spi_buffer.sector_size)
+ 		while(spi_base.rest > 0 )
 		{
+			spi_base.xfer_desc.tx_length   = (spi_base.spi_buffer.sector_size>spi_base.rest)?spi_base.rest:spi_base.spi_buffer.sector_size;
 			*spi_base.transfer_completed = false;
-			nrf_drv_spi_xfer(&spi, &xfer_desc, 0);
-			while (! *spi_base.transfer_completed) {}
+			nrf_drv_spi_xfer(&spi_base.spi, &spi_base.xfer_desc, 0);
+			spi_base.xfer_desc.p_tx_buffer += spi_base.spi_buffer.sector_size;
+			spi_base.rest -= spi_base.xfer_desc.tx_length;
 
-			xfer_desc.p_tx_buffer += spi_buffer.sector_size;
-			rest -= spi_buffer.sector_size;
+			while (! *spi_base.transfer_completed) {}
 		}
-		// final buffer
-		xfer_desc.tx_length    = rest;
-		*spi_base.transfer_completed = false;
-		nrf_drv_spi_xfer(&spi, &xfer_desc, 0);
-		while (! *spi_base.transfer_completed) {}
 
 }
 

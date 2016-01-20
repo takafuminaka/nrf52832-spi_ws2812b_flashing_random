@@ -15,11 +15,12 @@
 #include "app_util_platform.h"
 #include "bsp.h"
 
-
 #define PATTERN_0 (0x08)			// Bit pattern for data "0"
 #define PATTERN_1 (0x0e)      // Bit pattern for data "1"
 #define PATTERN_0_EOS (0x02)  // BIt pattern for data "0" for end of sector
 #define PATTERN_1_EOS (0x0e)  // BIt pattern for data "1" for end of sector
+
+#define NUM_SPI_BUS (3)
 
 #define	LED_SECTOR_SIZE	(21)	// number of LEDs which is sent in one SPIM transfer (<=21)
 
@@ -41,6 +42,9 @@ typedef struct
 {
 		nrf_drv_spi_t spi;
 		volatile bool * transfer_completed;
+		nrf_drv_spi_xfer_desc_t xfer_desc;
+		volatile spi_buffer_t spi_buffer;
+		volatile uint32_t rest;
 } ws2812b_driver_spi_t;
 
 void alloc_spi_buffer(spi_buffer_t * spi_buffer, uint16_t num_leds);
