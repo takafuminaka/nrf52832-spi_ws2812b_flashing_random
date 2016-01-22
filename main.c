@@ -32,7 +32,7 @@
 
 const uint8_t leds_list[LEDS_NUMBER] = LEDS_LIST;
 
-#define DELAY_MS                 	(5)			//	Timer Delay in milli-seconds.
+#define DELAY_MS                 	(50)			//	Timer Delay in milli-seconds.
 #define NUM_LEDS					(240)		//	Count of LEDs
 #define MAX_INTENSE					(16)		//
 #define MAX_INTENSE2				(255)
@@ -122,8 +122,8 @@ int main(void)
 			
 			// update led_array
 			{
-				for(uint16_t i=0;i<NUM_LEDS;i++) {
-					nextc = led_array[i].green + rand()%3 -1;
+				for(uint16_t i=0;i<NUM_LEDS-ROW_SIZE;i++) {
+					nextc = led_array[i+ROW_SIZE].green;// + rand()%3 -1;
 					if ( nextc < MIN_INTENSE )
 					{
 						nextc = MIN_INTENSE;
@@ -135,7 +135,7 @@ int main(void)
 					}
 					led_array[i].green = nextc;
 					
-					nextc = led_array[i].red + rand()%3 -1;
+					nextc = led_array[i+ROW_SIZE].red;// + rand()%3 -1;
 					if ( nextc < MIN_INTENSE )
 					{
 						nextc = MIN_INTENSE;
@@ -147,7 +147,7 @@ int main(void)
 					}
 					led_array[i].red = nextc;
 
-					nextc = led_array[i].blue + rand()%3 -1;
+					nextc = led_array[i+ROW_SIZE].blue;// + rand()%3 -1;
 					if ( nextc < MIN_INTENSE )
 					{
 						nextc = MIN_INTENSE;
@@ -160,6 +160,13 @@ int main(void)
 					led_array[i].blue = nextc;
 				}
 			}
+			for(uint16_t i=NUM_LEDS-ROW_SIZE;i<NUM_LEDS;i++)
+			{
+				led_array[i].green = rand()%(MAX_INTENSE-MIN_INTENSE)+MIN_INTENSE;
+				led_array[i].red   = rand()%(MAX_INTENSE-MIN_INTENSE)+MIN_INTENSE;
+				led_array[i].blue  = rand()%(MAX_INTENSE-MIN_INTENSE)+MIN_INTENSE;
+      }
+
 			// Update led_array_flash1
       {
 				for(uint16_t i=0;i<NUM_LEDS;i++)
@@ -255,7 +262,7 @@ int main(void)
 			{
 				for(uint16_t i=0;i<NUM_LEDS;i++)
 				{
-					nextc = led_array[i].green + led_array_flash1[i].green + led_array_flash2[i].green;
+					nextc = led_array[i].green;// + led_array_flash1[i].green + led_array_flash2[i].green;
 					if ( nextc < MIN_INTENSE )
 					{
 						nextc = MIN_INTENSE;
@@ -267,7 +274,7 @@ int main(void)
 					}
 					led_array_work[i].green = nextc;
 					
-					nextc = led_array[i].red + led_array_flash1[i].red + led_array_flash2[i].red;
+					nextc = led_array[i].red;// + led_array_flash1[i].red + led_array_flash2[i].red;
 					if ( nextc < MIN_INTENSE )
 					{
 						nextc = MIN_INTENSE;
@@ -279,7 +286,7 @@ int main(void)
 					}
 					led_array_work[i].red = nextc;
 
-					nextc = led_array[i].blue + led_array_flash1[i].blue + led_array_flash2[i].blue;
+					nextc = led_array[i].blue;// + led_array_flash1[i].blue + led_array_flash2[i].blue;
 					if ( nextc < MIN_INTENSE )
 					{
 						nextc = MIN_INTENSE;
