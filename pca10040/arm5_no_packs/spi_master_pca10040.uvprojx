@@ -421,6 +421,21 @@
               <FileType>1</FileType>
               <FilePath>..\..\main.c</FilePath>
             </File>
+            <File>
+              <FileName>flashing_random.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\flashing_random.c</FilePath>
+            </File>
+            <File>
+              <FileName>running_rainbow.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\running_rainbow.c</FilePath>
+            </File>
+            <File>
+              <FileName>running_rainbowv.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\running_rainbowv.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

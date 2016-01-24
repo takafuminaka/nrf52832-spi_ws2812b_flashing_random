@@ -13,8 +13,7 @@
 #include "ws2812b_driver.h"
 #include  "stdlib.h"
 
-void flashing_random_init();
-void flashing_random(rgb_led_t * led_array);
+void flashing_random_init(void);
+void flashing_random(rgb_led_t * led_array, uint32_t rap_time);
 
 #endif // FLASHING_RANDOM_H__
-	

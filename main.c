@@ -32,21 +32,24 @@
 
 #include	"flashing_random.h"
 #include	"running_rainbow.h"
+#include	"running_rainbowv.h"
+
 
 const uint8_t leds_list[LEDS_NUMBER] = LEDS_LIST;
 
 typedef struct
 {
 	void (*function_init)();
-	void (*function_update)();
+	void (*function_update)(rgb_led_t * led_array_out, uint32_t rap_time);
 	uint16_t wait_ms;   // wait time (ms)
 	int32_t demo_period;	// demo time (ms)
 	uint16_t process_time;	// process time for each step (ms)
 } demo_list_t;
 
 const static demo_list_t demo_list[] = {
-	{ &running_rainbow_init, &running_rainbow, 5 ,20000,8},
-	{ &flashing_random_init, &flashing_random, 20,20000,8},
+	{ &running_rainbowv_init, &running_rainbowv, 1 ,40000,8},
+	{ &running_rainbow_init, &running_rainbow, 1 ,40000,8},
+	{ &flashing_random_init, &flashing_random, 20,40000,8},
 };
 
 const static int8_t size_of_list = sizeof(demo_list)/sizeof(demo_list[0]);
@@ -76,8 +79,6 @@ int main(void)
 	
 		rgb_led_t led_array[NUM_LEDS];
 	
-		uint16_t rest;
-		int16_t nextc;
 		uint32_t current_limit;
 		float dim;
 	
@@ -109,6 +110,7 @@ int main(void)
 				demo_list[idemo].function_init();
 				
 				int32_t rest = demo_list[idemo].demo_period;
+				int32_t rap  = 0;
 				int32_t step = demo_list[idemo].wait_ms + demo_list[idemo].process_time;
 				
 				while( rest > 0 )
@@ -117,7 +119,7 @@ int main(void)
 
 
 					// animate and set up led_array_work 
-					demo_list[idemo].function_update(led_array);
+					demo_list[idemo].function_update(led_array,rap);
 					
 					// dim LEDs until current limit 
 					current_limit = CURRENT_LIMIT;
@@ -126,13 +128,13 @@ int main(void)
 					// fade in/out effect
 					if ( (demo_list[idemo].demo_period - rest) < FADE_IN_MS )
 					{
-						dim = 0.01+(0.99 * ((demo_list[idemo].demo_period - rest)/(float)FADE_IN_MS));
+						dim = (float)0.01+((float)0.99 * ((demo_list[idemo].demo_period - rest)/(float)FADE_IN_MS));
 					}
 					else if ( rest < FADE_IN_MS) 
 					{
-						dim = 0.01+(0.99 * (rest/(float)FADE_IN_MS));
+						dim = (float)0.01+((float)0.99 * (rest/(float)FADE_IN_MS));
 					}
-					if ( dim > 1.0 ) {
+					if ( dim > (float)1.0 ) {
 						dim = 1.0;
 					}
 					
@@ -146,6 +148,7 @@ int main(void)
 
 					//
 					rest -= step;
+					rap += step;
 				}
 
 				// blank 3sec. between demos
@@ -159,3 +162,4 @@ int main(void)
 }
 
 /** @} */
+

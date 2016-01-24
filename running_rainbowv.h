@@ -6,14 +6,18 @@
  *
  */
 
-#ifndef RUNNING_RAINBOW_H__
-#define RUNNING_RAINBOW_H__
+#ifndef RUNNING_RAINBOWV_H__
+#define RUNNING_RAINBOWV_H__
 
 #include	"project.h"
 #include "ws2812b_driver.h"
 #include  "stdlib.h"
 
-void running_rainbow_init(void);
-void running_rainbow(rgb_led_t * led_array, uint32_t rap_time);
+void running_rainbowv_init(void);
 
-#endif // RUNNING_RAINBOW_H__
+void running_rainbowv(rgb_led_t * led_array, uint32_t rap_time);
+
+#endif // RUNNING_RAINBOWV_H__
+
+
+

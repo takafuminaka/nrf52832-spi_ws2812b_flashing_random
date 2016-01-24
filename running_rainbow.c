@@ -62,7 +62,7 @@ void running_rainbow_init()
 	}
 }
 
-void running_rainbow(rgb_led_t * led_array_out)
+void running_rainbow(rgb_led_t * led_array_out, uint32_t rap_time)
 {
 	int16_t nextc;
 	
@@ -72,8 +72,10 @@ void running_rainbow(rgb_led_t * led_array_out)
 		{
 			led_array_work[i] = led_array_base[i];
 		}
+
+		int16_t delta=-6;
 		for(uint16_t i=0;i<NUM_LEDS;i++) {
-			led_array_base[i] = led_array_work[(i-1+NUM_LEDS)%NUM_LEDS];
+			led_array_base[i] = led_array_work[(delta+i+NUM_LEDS)%NUM_LEDS];
 		}
 	}
 // Update led_array_flash1

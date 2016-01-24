@@ -11,5 +11,5 @@
 #define MAX_INTENSE3				(80)
 #define MIN_INTENSE					(1)
 #define	ROW_SIZE					(17)			// Count of LEDs for each line
-#define CURRENT_LIMIT				(15000) 			// Current limit of LEDs (mA)
+#define CURRENT_LIMIT				(1000) 			// Current limit of LEDs (mA)
 #define	FADE_IN_MS			(5000)

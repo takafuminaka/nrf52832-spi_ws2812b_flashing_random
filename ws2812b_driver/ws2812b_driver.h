@@ -90,4 +90,3 @@ uint32_t ws2812b_driver_calc_current(rgb_led_t * led_array, uint16_t num_leds);
 
 
 #endif // WS2812B_DRIVER_H__
-
