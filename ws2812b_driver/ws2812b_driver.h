@@ -15,14 +15,29 @@
 #include "app_util_platform.h"
 #include "bsp.h"
 
-#define PATTERN_0 (0x08)			// Bit pattern for data "0"
+// #define DRIVE_MODE_4M
+#define DRIVE_MODE_8M
+
+#ifdef DRIVE_MODE_8M
+#define PATTERN_0 (0xe0)			// Bit pattern for data "0"
+#define PATTERN_1 (0xfc)      // Bit pattern for data "1"
+#define PATTERN_0_EOS (0x0e)  // BIt pattern for data "0" for end of sector
+#define PATTERN_1_EOS (0xfc)  // BIt pattern for data "1" for end of sector
+#define	LED_SECTOR_SIZE	(10)	// number of LEDs which is sent in one SPIM transfer (<=10)
+#define	BUF_SIZE_PER_LED	(24)	// buffer size for each LED (8bit * 8 * 3 )
+#endif
+
+#ifdef DRIVE_MODE_4M
+#define PATTERN_0 (0x0C)			// Bit pattern for data "0"
 #define PATTERN_1 (0x0e)      // Bit pattern for data "1"
-#define PATTERN_0_EOS (0x02)  // BIt pattern for data "0" for end of sector
+#define PATTERN_0_EOS (0x06)  // BIt pattern for data "0" for end of sector
 #define PATTERN_1_EOS (0x0e)  // BIt pattern for data "1" for end of sector
+#define	LED_SECTOR_SIZE	(21)	// number of LEDs which is sent in one SPIM transfer (<=21)
+#define	BUF_SIZE_PER_LED	(12)	// buffer size for each LED (4bit * 8 * 3 )
+#endif
 
 #define NUM_SPI_BUS (3)
 
-#define	LED_SECTOR_SIZE	(21)	// number of LEDs which is sent in one SPIM transfer (<=21)
 
 typedef struct
 {
@@ -51,7 +66,7 @@ void alloc_spi_buffer(spi_buffer_t * spi_buffer, uint16_t num_leds);
 
 void sectorize_spi_buffer(spi_buffer_t spi_buffer);
 
-void set_blank(spi_buffer_t spi_buffer);
+void set_blank(rgb_led_t * rgb_led, uint16_t num_leds);
 
 void set_buff(rgb_led_t* rgb_led, spi_buffer_t spi_buffer);
 
@@ -68,6 +83,8 @@ void spi1_event_handler(nrf_drv_spi_evt_t const * event);
 void spi2_event_handler(nrf_drv_spi_evt_t const * event);
 
 void ws2812b_driver_current_cap(rgb_led_t * led_array, uint16_t num_leds, uint32_t limit);
+
+void ws2812b_driver_dim(rgb_led_t * led_array, uint16_t num_leds, float dim );
 
 uint32_t ws2812b_driver_calc_current(rgb_led_t * led_array, uint16_t num_leds);
 
