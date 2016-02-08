@@ -12,8 +12,8 @@
 #include "ws2812b_driver.h"
 #include  "stdlib.h"
 
-#define STEP_SRIDE1					((ROW_SIZE+1))
-#define STEP_SRIDE2					((ROW_SIZE-1))
+#define STEP_SRIDE1					(-(ROW_SIZE+1))
+#define STEP_SRIDE2					(-(ROW_SIZE-1))
 #define DECAY_STEP					(30)
 #define	PRAB_FLASH					(1000)
 

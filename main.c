@@ -47,9 +47,9 @@ typedef struct
 } demo_list_t;
 
 const static demo_list_t demo_list[] = {
-	{ &running_rainbowv_init, &running_rainbowv, 1 ,40000,8},
-	{ &running_rainbow_init, &running_rainbow, 1 ,40000,8},
-	{ &flashing_random_init, &flashing_random, 20,40000,8},
+	{ &running_rainbowv_init, &running_rainbowv, 20 ,30000,8},
+	{ &running_rainbow_init, &running_rainbow, 20 ,30000,8},
+	{ &flashing_random_init, &flashing_random, 20,30000,8},
 };
 
 const static int8_t size_of_list = sizeof(demo_list)/sizeof(demo_list[0]);

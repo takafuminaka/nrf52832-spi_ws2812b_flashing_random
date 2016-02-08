@@ -12,10 +12,10 @@
 #include "ws2812b_driver.h"
 #include  "stdlib.h"
 
-#define STEP_SRIDE1					((ROW_SIZE+1))
-#define STEP_SRIDE2					((ROW_SIZE-1))
+#define STEP_SRIDE1					(-(ROW_SIZE+1))
+#define STEP_SRIDE2					(-(ROW_SIZE-1))
 #define DECAY_STEP					(30)
-#define	PRAB_FLASH					(10000)
+#define	PRAB_FLASH					(1000)
 
 
 static rgb_led_t led_array_base[NUM_LEDS];				// array for base color
